@@ -5,7 +5,7 @@ from friends.yasg import urlpatterns as doc_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1.0/', include('friends.urls')),
+    path('/v1.0/', include('friends.urls')),
     path('auth/', include('djoser.urls')),
 ]
 

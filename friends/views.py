@@ -9,12 +9,25 @@ from .models import User, Application
 
 
 class ProfileAPIView(RetrieveAPIView):
-    """Вывод профиля"""
     permission_classes = (IsAuthenticatedOrReadOnly,)
+
+    def get_object(self):
+        return get_object_or_404(User, id=self.kwargs['user_pk'])
+
+    def get_serializer(self, *args, **kwargs):
+        user = User.objects.get(id=self.kwargs['user_pk'])
+        if user == self.request.user:
+            self.serializer_class = ProfileSerializer
+        elif user != self.request.user:
+            self.serializer_class = AnotherProfileSerializer
+
+        if self.request.method == 'POST':
+            self.serializer_class = ApplicationSerializer
+        return super().get_serializer(*args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
         """Удалить из друзей"""
-        user = get_object_or_404(User, id=self.kwargs['pk'])
+        user = get_object_or_404(User, id=self.kwargs['user_pk'])
         if user == self.request.user:
             return Response('Нельзя удалить себя из друзей', status=status.HTTP_400_BAD_REQUEST)
         if user and self.request.user.friends.filter(id=user.id):
@@ -22,30 +35,16 @@ class ProfileAPIView(RetrieveAPIView):
             return Response('Удалено', status=status.HTTP_200_OK)
         return Response('Ошибка при удалении', status=status.HTTP_400_BAD_REQUEST)
 
-    def get_object(self):
-        return get_object_or_404(User, id=self.kwargs['pk'])
-
-    def get_serializer(self, *args, **kwargs):
-        user = User.objects.get(id=self.kwargs['pk'])
-        if user == self.request.user:
-            self.serializer_class = ProfileSerializer
-        else:
-            self.serializer_class = AnotherProfileSerializer
-        return super().get_serializer(*args, **kwargs)
-
-
-class ApplicationAPIView(APIView):
-    serializer_class = ApplicationSerializer
-    permission_classes = (IsAuthenticated,)
-
-    def post(self, request, pk):
+    def post(self, request, user_pk):
         """Отправить заявку в друзья"""
-        recipient = User.objects.get(id=pk)
+        recipient = User.objects.get(id=user_pk)
 
         if recipient == self.request.user:
             return Response('Нельзя отправить заявку самому себе')
         if Application.objects.filter(sender=request.user, recipient=recipient):
             return Response('Заявка уже была отправлена', status=status.HTTP_409_CONFLICT)
+        if self.request.user.friends.filter(id=user_pk):
+            return Response('Вы уже друзья', status=status.HTTP_400_BAD_REQUEST)
         if Application.objects.filter(sender=request.user, recipient=recipient) and \
                 Application.objects.filter(sender=recipient, recipient=request.user):
             recipient.friends.add(self.request.user)
@@ -57,7 +56,6 @@ class ApplicationAPIView(APIView):
 
 
 class ApplicationActionAPIView(APIView):
-    """Принять/отклонить заявку в друзья"""
     serializer_class = ApplicationSerializer
     permission_classes = (IsAuthenticated,)
 
@@ -69,7 +67,7 @@ class ApplicationActionAPIView(APIView):
             application.delete()
             return Response('Заявка принята', status=status.HTTP_200_OK)
         else:
-            return Response('Вы не можете принять эту заявку')  # Прописать validatorerror
+            return Response('Вы не можете принять эту заявку')
 
     def delete(self, request, application_pk):
         """Отклонить заявку в друзья"""
@@ -78,4 +76,4 @@ class ApplicationActionAPIView(APIView):
             application.delete()
             return Response('Заявка отклонена', status=status.HTTP_200_OK)
         else:
-            return Response('Вы не можете отклонить эту заявку')  # Прописать validatorerror
+            return Response('Вы не можете отклонить эту заявку', status=status.HTTP_400_BAD_REQUEST)
