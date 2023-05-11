@@ -4,7 +4,7 @@
 Клонировать репозиторий:
 
 ```
-git clone https://github.com/Danil-Lv/shortlink.git
+https://github.com/Danil-Lv/VK-test-task
 ```
 
 Установить зависимости
