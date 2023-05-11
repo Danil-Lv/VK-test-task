@@ -7,6 +7,11 @@
 git clone https://github.com/Danil-Lv/shortlink.git
 ```
 
+Установить зависимости
+```
+pip install req.txt
+```
+
 Запустить сервер 
 ```
 python3 manage.py runserver
